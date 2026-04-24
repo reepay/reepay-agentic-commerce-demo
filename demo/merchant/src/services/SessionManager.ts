@@ -358,6 +358,22 @@ export class SessionManager {
 
     // const totalAmount = session.totals.find(t => t.type === 'total')?.amount || 0;
 
+    const order_lines = session.line_items.map((item: LineItem) => {
+          return {
+            ordertext: item.item.id,
+            amount: item.total,
+            quantity: item.item.quantity
+          } as OrderLine
+      })
+    const shipping = session.totals.find(t => t.type === "fulfillment")
+    if (!!shipping){
+      order_lines.push({
+        ordertext: shipping.display_text,
+        amount: shipping.amount,
+        quantity: 1
+      })
+    }
+
     const chargeResponse: ChargeResponse = await this.paymentService.processPayment({
       source: request.payment_data.token,
       settle: false,
@@ -373,13 +389,7 @@ export class SessionManager {
         postal_code: session.fulfillment_address?.postal_code,
         generate_handle: true,
       },
-      order_lines: session.line_items.map((item: LineItem) => {
-          return {
-            ordertext: item.item.id,
-            amount: item.total,
-            quantity: item.item.quantity
-          } as OrderLine
-      })
+      order_lines: order_lines
     });
 
     // Check if payment succeeded
