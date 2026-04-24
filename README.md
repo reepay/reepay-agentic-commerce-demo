@@ -3,18 +3,18 @@
 
 On [September 29th](https://openai.com/index/buy-it-in-chatgpt/), OpenAI released the Agentic Commerce Protocol (ACP), which will be foundational for how agents transact with the outside world.  
 
-ACP is already in use by Stripe, Shopify, and OpenAI. As an open-source standard, it isn’t limited to ChatGPT — it’s designed to let any LLM client transact with any vendor. This creates a *huge* opportunity for devs to start building on top of it today.  
+As an open-source standard, it isn’t limited to ChatGPT — it’s designed to let any LLM client transact with any vendor. This creates an opportunity for devs to start building on top of it today.  
 
-To accelerate experimentation, we built the **first working mock implementation**: a sandbox that demonstrates the ACP flow end-to-end with a Client, Merchant, and Payment Service Provider (PSP).
+Here is a small demo that can be used to explore this functionality using Frisbii as a PSP. This demo should also allow merchants to test their own implementations.
 
-
-## Quick Start
+## Running this demo
 
 ### Prerequisites
 
 - Node.js 20+
 - Docker & Docker Compose
 - OpenAI and/or Anthropic API keys
+- Frisbii test account + public API key
 
 ### Setup
 
@@ -38,14 +38,24 @@ To accelerate experimentation, we built the **first working mock implementation*
    cd ..
    ```
 
+4. **Configure the demo ACP to use your specific merchant credentials**
+   ```bash
+   cd demo/mcp-ui-server
+   cp .env.example .env
+   # Edit .env
+   cd ..
+   ```
+   Add a public Frisbii API key to the `PSP_CLIENT_API_KEY`, corresponding to the test account you're planning to use.
+
+   When ready to test your own implementation, replace `MERCHANT_BASE_URL` and `MERCHANT_API_KEY` in the same file with relevant values.
+
 4. **Start all services**
    ```bash
    npm run dev
    ```
    This will:
    - Start PostgreSQL databases (via Docker)
-   - Start the Merchant API (port 4001)
-   - Start the PSP API (port 4000)
+   - Start the simulated Merchant API (port 4001)
    - Start the MCP server (port 3112)
 
 5. **Start the chat client** (in a new terminal)
@@ -59,53 +69,37 @@ To accelerate experimentation, we built the **first working mock implementation*
    - Ask the agent: "Show me some shirts"
    - Add items to cart
    - Complete checkout with test payment info
-   - Examine how the Client, Merchant, and PSP interact via terminal
 
-## Repository Structure
-
-```
-├── demo/              # Reference implementation of ACP
-│   ├── mcp-ui-server/ # MCP server with commerce tools
-│   ├── merchant/      # Merchant API (checkout sessions)
-│   └── psp/           # Payment Service Provider
-└── chat-client/       # MCP-UI compatible chat interface
-                       # (adapted from scira-mcp-ui-chat)
-```
-
-
-# Core Concepts & Definitions
-
-ACP coordinates three modular systems:
-
-- **Client**: The environment where users interact with an LLM (e.g., ChatGPT, Claude.ai, Ollama).
-- **Merchant**: A vendor (e.g., Etsy, eBay, Amazon) selling goods or services through the client.  
-- **Payment Service Provider (PSP)**: Processes payments on behalf of the merchant (e.g., Stripe, Square). *Most merchants outsource this role to avoid PCI compliance scope.*
-    
-
-<br/>
-<p align="center">
-<img src="docs/flow.png" alt="ACP Flow Diagram" width="400"/>
-</p>
 
 ## Implementation Details
 
+![ACP Architecture](docs/architecture.png)
+
 ### Client
+The agent client is composed of 2 parts: 
+- the AI chat, which could be ChatGPT or any other LLM.
+- some UI used for collecting data. This part is implemented in this demo via an MCP server.
 
--   For ease of development, server logic is offshored onto an MCP server compatible with [MCP-UI](https://github.com/idosal/mcp-ui): an open-source extension of MCP that introduces UI components as tool return types.
-- For our chat client, we adapted [Ido Saloman's MCP-UI-compatible fork of Scira Chat](https://github.com/idosal/scira-mcp-ui-chat) (see `chat-client/` directory)
--   In our implementation, the chat client + MCP together constitute the Client entity in the ACP protocol.
+This part should be provided by ChatGPT and is not yet available in Europe.
 
-### Merchant + PSP
--   Each service implements the endpoints required by the ACP spec.
-    -   **Merchant**: checkout session management.
-    -   **PSP**: delegated payment endpoint for minting tokens.
+### Merchant
+The merchant's backend system. This demo comes with a simulated merchant backend that implements the required endpoints. These are presented in the [checkout spec](https://www.agenticcommerce.dev/docs/reference/checkout).
+
+Once the agent completes the checkout, the merchant simulator calls the PSP (Frisbii) to perform the charge with the provided payment token.
+
+### Payment Provider
+This demo uses Frisbii's implementation of the [delegated payment spec](https://www.agenticcommerce.dev/docs/reference/payments). Once a token is created by the agent, the token can be used to fulfill the payment.
+
 
 ## Shopping Workflow
+*Also see OpenAI's docs on [checkout spec](https://developers.openai.com/commerce/specs/checkout) and [product feed](https://developers.openai.com/commerce/guides/get-started)* 
 
-*See [OpenAI's docs](https://developers.openai.com/commerce/specs/checkout)*
+### Lookup products
+The agent requires a product catalog provided by the merchant and indexes it accordingly. Check the link above for details.
 
-##### Open a checkout session
+When the user performs a query, the agent will use the indexed catalog to provide relevant recommendations.
 
+### Open a checkout session
 When the user first adds an item to the cart, the Client calls:
 ```http
 POST /checkout_sessions
@@ -114,8 +108,7 @@ POST /checkout_sessions
 -   A checkout session state tracks line items, user contact info, and fulfillment address.
     
 
-##### Update session state
-
+### Update session state
 As the user shops, the Client updates the Merchant each time the cart, contact info, or fulfillment address changes:
 ```http
 POST /checkout_sessions/{checkout_session_id}
@@ -123,44 +116,35 @@ POST /checkout_sessions/{checkout_session_id}
 -   Per ACP spec, the Merchant returns its copy of the updated checkout state.
 -   The Client treats this as the source of truth and updates the in-chat UI accordingly.
 
-##### Cancel session (optional)
+### Cancel session (optional)
 Removing all items from the cart cancels the session. Alternatively, the Client can explicitly cancel by calling:
 ```http
 POST /checkout_sessions/{checkout_session_id}/cancel
 ```
 
-##### Retrieve session details (optional)
+### Retrieve session details (optional)
 For implementations that need it, the Client can fetch details for a session:
 ```http
 GET /checkout_sessions/{checkout_session_id}
 ```
 
+### Payment / Checkout Workflow
+Complete payment
+```http
+POST /checkout_sessions/{checkout_session_id}/complete
+```
+This call contains a payment taken, that the Merchant can then use to fulfill a charge.
 
-## Payment / Checkout Workflow
-*See [OpenAI's docs](https://developers.openai.com/commerce/specs/payment)*
 
-For transactions, we implemented the Delegated Checkout flow:
-1.  When the user submits payment credentials, the Client passes them to the Merchant’s PSP.
-2.  The PSP stores the credentials and mints a Shared Payment Token (a reference to the vaulted credentials).
-3.  The PSP returns the token to the Client.
-4.  The Client POSTs `/checkout_sessions/:checkout_session_id/complete` to the Merchant, including the token.
-5.  The Merchant redeems the token with the PSP, which invalidates it and executes the transaction.
-    
+# Merchant TODOs
+Note that ACP is not yet available in Europe. This demo aims to provide an end to end representation of how Agentic Commerce is expected to look like. 
 
-##### Why delegated payments?
--   Merchants don’t want to handle raw card data (which would put them in PCI compliance scope).
--   Delegating to a PSP is industry-standard — ACP formalizes this so that agents can pay programmatically instead of relying on web redirects or brittle RPA flows.
-    
+That being said, you can prepare your system in the following ways:
+- Check the [specs](https://www.agenticcommerce.dev/docs/reference/checkout) and implement the presented APIs.
+- Create a Frisbii public key - this is needed for the agent to comission payment tokens.
+- If not already doing so, implement API calls to our [charge endpoint](https://docs.frisbii.com/reference/createcharge).
+- Provide OpenAI with details about your products. This is documented [here](https://developers.openai.com/commerce/guides/get-started) and is beyond the scope of this demo.
 
-## Product Feed
-*See [OpenAI's docs](https://developers.openai.com/commerce/specs/feed)*
--   ACP also defines a spec: merchants must regularly provide product data (TSV, CSV, XML, JSON) to a secure endpoint.
--   For demo purposes, our Client simply calls the Merchant’s `GET /products` once on startup and ingests results into a lightweight vector store for lookup.
-    
-## The Future
-All endpoints defined by the ACP spec adhere to the standard, including required headers, response formats, and idempotency handling. 
-
-That said, [ACP repo](https://github.com/agentic-commerce-protocol/agentic-commerce-protocol) is still in `draft`, so details may change. We’ll track updates closely and welcome contributions from the community to keep this implementation in sync!
 
 </br>
 

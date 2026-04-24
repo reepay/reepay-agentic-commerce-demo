@@ -99,8 +99,8 @@ export class MerchantSessionService {
     if (!session || !session.fulfillment_address) {
       return false;
     }
-    const { name, line_one, city, state, country, postal_code } = session.fulfillment_address;
-    return !!(name && line_one && city && state && country && postal_code);
+    const { name, line_one, city, country, postal_code } = session.fulfillment_address;
+    return !!(name && line_one && city && country && postal_code);
   }
 
   /**

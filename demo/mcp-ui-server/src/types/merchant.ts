@@ -48,7 +48,7 @@ export interface Address {
   /** Address city/district/suburb/town/village */
   city: string;
   /** Address state/county/province/region */
-  state: string;
+  state?: string;
   /** Address country */
   country: string;
   /** Address postal code or zip code */

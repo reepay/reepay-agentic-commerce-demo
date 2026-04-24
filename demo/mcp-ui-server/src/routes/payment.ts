@@ -64,7 +64,7 @@ export function setupPaymentRoutes(
         allowance: {
           reason: 'one_time',
           max_amount: totalAmount,
-          currency: 'usd',
+          currency: currentSession.currency,
           checkout_session_id: checkoutSessionId,
           merchant_id: 'merchant_123',
           expires_at: new Date(Date.now() + 3600000).toISOString()

@@ -12,7 +12,6 @@
   "workspaces": [
     "demo/mcp-ui-server",
     "demo/merchant",
-    "demo/psp",
     "chat-client"
   ],
   "scripts": {

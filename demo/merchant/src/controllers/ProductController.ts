@@ -81,7 +81,7 @@ export class ProductController {
    */
   getCategories = async (_req: Request, res: Response): Promise<void> => {
     try {
-      const products = this.catalog.getAllProducts();
+      const products = await this.catalog.getAllProducts();
 
       // Categorize products
       const physical = products.filter(p => p.requires_shipping);

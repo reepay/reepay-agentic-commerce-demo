@@ -252,18 +252,17 @@ export function registerCollectBuyerInfoTool(
       <div class="form-group">
         <label for="country">Country *</label>
         <select id="country" required onchange="updateStateOptions()">
-          <option value="US">United States</option>
-          <option value="CA">Canada</option>
+          <option value="DE">Germany</option>
+          <option value="DK">Denmark</option>
         </select>
         <div id="countryError" class="error hidden">Country is required</div>
       </div>
 
       <div class="form-group">
-        <label for="state">State/Province *</label>
-        <select id="state" required>
+        <label for="state">State/Province</label>
+        <select id="state">
           <option value="">Select a state...</option>
         </select>
-        <div id="stateError" class="error hidden">State is required</div>
       </div>
 
       <div class="form-group">
@@ -386,17 +385,16 @@ export function registerCollectBuyerInfoTool(
       document.getElementById('firstName').value = 'John';
       document.getElementById('lastName').value = 'Doe';
       document.getElementById('email').value = 'john.doe@example.com';
-      document.getElementById('phone').value = '+15551234567';
+      document.getElementById('phone').value = '+4550505050';
     }
 
     function fillTestAddress() {
       document.getElementById('addressLine1').value = '123 Main Street';
       document.getElementById('addressLine2').value = 'Apt 4B';
-      document.getElementById('city').value = 'San Francisco';
-      document.getElementById('country').value = 'US';
+      document.getElementById('city').value = 'Test City';
+      document.getElementById('country').value = 'DK';
       updateStateOptions();
-      document.getElementById('state').value = 'CA';
-      document.getElementById('postalCode').value = '94102';
+      document.getElementById('postalCode').value = '1234';
     }
 
     // Validation helpers
@@ -498,10 +496,6 @@ export function registerCollectBuyerInfoTool(
       }
       if (!city) {
         showError('cityError');
-        isValid = false;
-      }
-      if (!state) {
-        showError('stateError');
         isValid = false;
       }
       if (!country) {
